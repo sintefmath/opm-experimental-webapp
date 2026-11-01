@@ -45,20 +45,50 @@ function call3d(fn, m) {
 
 // ---------------------------------------------------------------- simulator build
 
-// The 64-bit (MEMORY64) build can use up to 16 GB, but needs browser support and is slower
+// Up to four simulator builds: wasm32/wasm64 (MEMORY64, up to 16 GB, needs browser support,
+// slower), each single-threaded or multi-threaded (OpenMP; needs a cross-origin isolated page).
+// The directory names match package-web.sh and worker.js.
+const BUILDS = { st32: '', st64: 'wasm64/', mt32: 'mt32/', mt64: 'mt64/' };
 const MEM64_PROBE = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 5, 3, 1, 4, 0]);
+const available = new Set();
+
 async function setupBuildSelect() {
-  const opt = $('build-select').querySelector('option[value="64"]');
-  let reason = '';
-  if (!WebAssembly.validate(MEM64_PROBE)) reason = 'not supported by this browser';
-  else {
-    try { if (!(await fetch('wasm64/flow.js', { method: 'HEAD' })).ok) reason = 'not included in this build'; }
-    catch (e) { reason = 'not included in this build'; }
+  const mem64 = WebAssembly.validate(MEM64_PROBE);
+  await Promise.all(Object.entries(BUILDS).map(async ([id, dir]) => {
+    if (id.endsWith('64') && !mem64) return;
+    if (id.startsWith('mt') && !self.crossOriginIsolated) return;
+    try { if ((await fetch(dir + 'flow.js', { method: 'HEAD' })).ok) available.add(id); } catch (e) { /* missing */ }
+  }));
+  const opt64 = $('build-select').querySelector('option[value="64"]');
+  if (!available.has('st64') && !available.has('mt64')) {
+    opt64.disabled = true;
+    opt64.textContent += mem64 ? ' — not included in this build' : ' — not supported by this browser';
   }
-  if (reason) { opt.disabled = true; opt.textContent += ` — ${reason}`; }
+  const sel = $('threads-select');
+  const cores = navigator.hardwareConcurrency || 1;
+  const mt = available.has('mt32') || available.has('mt64');
+  const counts = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32].filter((n) => n < cores);
+  for (const n of [...counts, Math.min(cores, 64)]) sel.append(new Option(String(n), n));
+  if (mt) sel.value = String([...sel.options].map((o) => +o.value).filter((n) => n <= Math.max(1, cores / 2)).pop());
+  else {
+    sel.disabled = true;
+    $('threads-note').textContent = self.crossOriginIsolated ? '(no multi-threaded build here)'
+      : '(multi-threading needs a cross-origin isolated page)';
+  }
 }
-setupBuildSelect();
-const newWorker = () => new Worker($('build-select').value === '64' ? 'worker.js?build=64' : 'worker.js');
+const buildsReady = setupBuildSelect();
+
+// Pick the build for the chosen memory limit and thread count
+function chooseBuild(threads) {
+  const mem = $('build-select').value;
+  const order = threads > 1 ? [`mt${mem}`, `st${mem}`] : [`st${mem}`, `mt${mem}`];
+  return order.find((id) => available.has(id)) || 'st32';
+}
+function newWorker(threads) {
+  const id = chooseBuild(threads);
+  const n = id.startsWith('mt') ? threads : 1;
+  return { worker: new Worker(`worker.js?dir=${encodeURIComponent(BUILDS[id])}&threads=${n}`), threads: n, id };
+}
 
 // Read the grid with a dry run (no time stepping) so it can be shown before simulating
 function previewGrid() {
@@ -67,7 +97,7 @@ function previewGrid() {
   state.previewWorker = null;
   if (!deck || state.worker) return;
   const files = [...state.files].map(([path, data]) => ({ path, data: data.slice().buffer }));
-  const w = newWorker();
+  const w = newWorker(1).worker;
   state.previewWorker = w;
   setStatus('Reading grid for the 3D view (dry run)…');
   const end = () => { w.terminate(); if (state.previewWorker === w) state.previewWorker = null; };
@@ -207,8 +237,9 @@ function runSimulation() {
   setProgress(0, '0 %');
 
   const files = [...state.files].map(([path, data]) => ({ path, data: data.slice().buffer }));
-  const w = newWorker();
+  const { worker: w, threads, id: buildId } = newWorker(+$('threads-select').value);
   state.worker = w;
+  appendLog(`Using the ${buildId.endsWith('64') ? '64' : '32'}-bit build with ${threads} thread(s).`);
   $('run').disabled = true;
   $('stop').disabled = false;
   startTime = performance.now();
@@ -273,7 +304,7 @@ function runSimulation() {
     setStatus('Worker error: ' + e.message);
     finishRun();
   };
-  w.postMessage({ type: 'run', files, deck, args: splitArgs($('extra-args').value) },
+  w.postMessage({ type: 'run', files, deck, threads, args: splitArgs($('extra-args').value) },
                 files.map((f) => f.data));
 }
 

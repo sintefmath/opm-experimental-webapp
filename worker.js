@@ -1,8 +1,13 @@
 // Web Worker running OPM Flow (WebAssembly) so that the UI stays responsive.
 /* global createFlow, readSummary, readGrid, readInit, indexRestart, readRestartStep */
-// worker.js?build=64 loads the 64-bit (MEMORY64) simulator from wasm64/
-const BUILD_DIR = new URL(self.location.href).searchParams.get('build') === '64' ? 'wasm64/' : '';
-importScripts(BUILD_DIR + 'flow.js', 'smry.js');
+// worker.js?dir=mt64/&threads=4 loads the simulator build in that directory (see BUILDS in app.js)
+const params = new URL(self.location.href).searchParams;
+const BUILD_DIR = (params.get('dir') || '').replace(/[^\w/]/g, '');
+const THREADS = Math.max(1, +params.get('threads') || 1);
+// Emscripten starts the OpenMP thread pool from this script's URL; such a worker ("em-pthread")
+// only loads the simulator, which then takes over its message handling
+const IS_PTHREAD = self.name === 'em-pthread';
+importScripts(BUILD_DIR + 'flow.js', ...(IS_PTHREAD ? [] : ['smry.js']));
 
 const CASE_DIR = '/case';
 const OUT_DIR = '/output';
@@ -120,7 +125,7 @@ function onOutput(text) {
   if (m && totalDays > 0) post({ type: 'progress', day: parseFloat(m[1]), totalDays });
 }
 
-self.onmessage = async (ev) => {
+if (!IS_PTHREAD) self.onmessage = async (ev) => {
   const msg = ev.data;
   if (msg.type !== 'run') return;
   deckBase = msg.deck.split('/').pop().replace(/\.[^.]*$/, '');
@@ -131,6 +136,8 @@ self.onmessage = async (ev) => {
       printErr: (t) => post({ type: 'log', text: t, err: true }),
       noInitialRun: true,
       locateFile: (p) => BUILD_DIR + p,
+      // multi-threaded builds: the Web Workers for the OpenMP threads are created before main() runs
+      numThreads: THREADS,
     });
     FS = mod.FS;
     mkdirs(CASE_DIR);
@@ -145,6 +152,7 @@ self.onmessage = async (ev) => {
       CASE_DIR + '/' + msg.deck,
       '--output-dir=' + OUT_DIR,
       '--enable-async-ecl-output=false',
+      '--threads-per-process=' + THREADS,   // flow's own default is 2
       ...(msg.preview ? ['--enable-dry-run=true'] : []),
       ...msg.args,
     ];

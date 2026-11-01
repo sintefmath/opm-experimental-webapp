@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OPM Flow in the browser</title>
 <link rel="stylesheet" href="style.css">
+<script src="isolate.js"></script>
 </head>
 <body>
 <header>
@@ -43,6 +44,10 @@
           <option value="32">up to 4 GB (wasm32, faster)</option>
           <option value="64">up to 16 GB (wasm64, for large cases)</option>
         </select>
+      </label>
+      <label>Threads
+        <select id="threads-select"></select>
+        <span class="muted small" id="threads-note"></span>
       </label>
       <label class="grow">Extra flow arguments
         <input type="text" id="extra-args" placeholder="e.g. --linear-solver=ilu0">
