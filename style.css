@@ -1,0 +1,96 @@
+:root {
+  --bg: #f5f6f8;
+  --card: #ffffff;
+  --text: #1d2330;
+  --muted: #6b7280;
+  --border: #dde1e7;
+  --accent: #1f6feb;
+  --accent-text: #ffffff;
+  --grid: #e8ebef;
+  --log-bg: #0f1419;
+  --log-text: #c9d1d9;
+  --plot-bg: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1218;
+    --card: #171b23;
+    --text: #e3e7ee;
+    --muted: #8b95a5;
+    --border: #2a303b;
+    --accent: #4c8dff;
+    --grid: #262c37;
+    --plot-bg: #12161d;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+header, main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+header { padding-top: 24px; }
+h1 { margin: 0 0 4px; font-size: 26px; }
+h1 .sub { font-weight: 400; color: var(--muted); font-size: 18px; }
+h2 { margin: 0 0 12px; font-size: 17px; }
+.muted { color: var(--muted); }
+.card {
+  background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+  padding: 16px; margin: 16px 0;
+}
+.row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
+.row label { display: flex; gap: 8px; align-items: center; }
+.row label.grow { flex: 1; }
+.row label.grow input { flex: 1; min-width: 0; }
+button, .file-btn, select, input[type=text] {
+  font: inherit; color: var(--text); background: var(--card);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px;
+}
+button, .file-btn { cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.progress {
+  position: relative; height: 22px; border-radius: 6px; overflow: hidden;
+  background: var(--grid); margin-top: 10px;
+}
+#progress-bar { height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+#progress-text {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.plots { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.plot-box { border: 1px solid var(--border); border-radius: 8px; padding: 8px; min-width: 0; }
+.plot-head { font-weight: 600; margin-bottom: 4px; min-height: 32px; display: flex; align-items: center; }
+.plot { width: 100%; height: 280px; }
+.plot svg { width: 100%; height: 100%; display: block; }
+.plot .empty { fill: var(--muted); font-size: 13px; }
+#output-list { columns: 2 240px; margin: 8px 0 0; padding-left: 18px; font-size: 13px; }
+#output-list a { color: var(--accent); }
+pre#log {
+  background: var(--log-bg); color: var(--log-text); padding: 10px; border-radius: 6px;
+  max-height: 360px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all;
+}
+summary { cursor: pointer; font-weight: 600; }
+
+.small { font-size: 13px; font-weight: 400; }
+.v3d-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
+@media (max-width: 760px) { .v3d-layout { grid-template-columns: minmax(0, 1fr); } }
+.v3d-layout > * { min-width: 0; }
+#v3d { height: 480px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; touch-action: none; }
+#v3d canvas { display: block; width: 100%; height: 100%; }
+.v3d-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
+  margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.legend { display: flex; align-items: center; gap: 6px; }
+#v-legend-bar { width: 160px; height: 12px; border-radius: 3px; }
+.v3d-controls { display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
+.v3d-controls label { display: flex; gap: 8px; align-items: center; }
+.v3d-controls select { flex: 1; min-width: 0; }
+.ctl-group { border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.ctl-head { font-weight: 600; font-size: 13px; }
+.axis { display: grid; grid-template-columns: 1fr; gap: 2px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.axis input[type=range], #v-step { width: 100%; accent-color: var(--accent); }
+.check { font-size: 13px; }
+.thr { display: flex; gap: 6px; align-items: center; }
+.thr input { width: 0; flex: 1; padding: 4px 6px; }
+footer { max-width: 1100px; margin: 0 auto; padding: 0 16px 32px; }
+footer a { color: var(--accent); }
