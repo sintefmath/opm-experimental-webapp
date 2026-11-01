@@ -43,6 +43,23 @@ function call3d(fn, m) {
     'is missing or blocked on this server (see the browser console).';
 }
 
+// ---------------------------------------------------------------- simulator build
+
+// The 64-bit (MEMORY64) build can use up to 16 GB, but needs browser support and is slower
+const MEM64_PROBE = new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 5, 3, 1, 4, 0]);
+async function setupBuildSelect() {
+  const opt = $('build-select').querySelector('option[value="64"]');
+  let reason = '';
+  if (!WebAssembly.validate(MEM64_PROBE)) reason = 'not supported by this browser';
+  else {
+    try { if (!(await fetch('wasm64/flow.js', { method: 'HEAD' })).ok) reason = 'not included in this build'; }
+    catch (e) { reason = 'not included in this build'; }
+  }
+  if (reason) { opt.disabled = true; opt.textContent += ` — ${reason}`; }
+}
+setupBuildSelect();
+const newWorker = () => new Worker($('build-select').value === '64' ? 'worker.js?build=64' : 'worker.js');
+
 // Read the grid with a dry run (no time stepping) so it can be shown before simulating
 function previewGrid() {
   const deck = $('deck-select').value;
@@ -50,7 +67,7 @@ function previewGrid() {
   state.previewWorker = null;
   if (!deck || state.worker) return;
   const files = [...state.files].map(([path, data]) => ({ path, data: data.slice().buffer }));
-  const w = new Worker('worker.js');
+  const w = newWorker();
   state.previewWorker = w;
   setStatus('Reading grid for the 3D view (dry run)…');
   const end = () => { w.terminate(); if (state.previewWorker === w) state.previewWorker = null; };
@@ -71,6 +88,7 @@ function previewGrid() {
                 files.map((f) => f.data));
 }
 $('deck-select').addEventListener('change', previewGrid);
+$('build-select').addEventListener('change', previewGrid);
 
 // Remove a common leading directory (e.g. "NORNE/") from all paths
 function stripCommonRoot(entries) {
@@ -189,7 +207,7 @@ function runSimulation() {
   setProgress(0, '0 %');
 
   const files = [...state.files].map(([path, data]) => ({ path, data: data.slice().buffer }));
-  const w = new Worker('worker.js');
+  const w = newWorker();
   state.worker = w;
   $('run').disabled = true;
   $('stop').disabled = false;
@@ -235,7 +253,10 @@ function runSimulation() {
           setProgress(1, '100 %');
           setStatus(`Finished in ${m.seconds.toFixed(1)} s.`);
         } else {
-          setStatus(`Flow exited with code ${m.rc} after ${m.seconds.toFixed(1)} s — see the log.`);
+          const oom = logLines.some((l) => /bad_alloc|Cannot enlarge memory|Out of memory/i.test(l));
+          setStatus(oom && $('build-select').value !== '64'
+            ? 'Flow ran out of memory (4 GB limit of wasm32). Try "Memory: up to 16 GB" and run again.'
+            : `Flow exited with code ${m.rc} after ${m.seconds.toFixed(1)} s — see the log.`);
         }
         finishRun();
         break;

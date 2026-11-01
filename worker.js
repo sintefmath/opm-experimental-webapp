@@ -1,6 +1,8 @@
 // Web Worker running OPM Flow (WebAssembly) so that the UI stays responsive.
 /* global createFlow, readSummary, readGrid, readInit, indexRestart, readRestartStep */
-importScripts('flow.js', 'smry.js');
+// worker.js?build=64 loads the 64-bit (MEMORY64) simulator from wasm64/
+const BUILD_DIR = new URL(self.location.href).searchParams.get('build') === '64' ? 'wasm64/' : '';
+importScripts(BUILD_DIR + 'flow.js', 'smry.js');
 
 const CASE_DIR = '/case';
 const OUT_DIR = '/output';
@@ -128,6 +130,7 @@ self.onmessage = async (ev) => {
       print: onOutput,
       printErr: (t) => post({ type: 'log', text: t, err: true }),
       noInitialRun: true,
+      locateFile: (p) => BUILD_DIR + p,
     });
     FS = mod.FS;
     mkdirs(CASE_DIR);

@@ -38,6 +38,12 @@
   <section class="card">
     <h2>2. Run</h2>
     <div class="row">
+      <label>Memory
+        <select id="build-select">
+          <option value="32">up to 4 GB (wasm32, faster)</option>
+          <option value="64">up to 16 GB (wasm64, for large cases)</option>
+        </select>
+      </label>
       <label class="grow">Extra flow arguments
         <input type="text" id="extra-args" placeholder="e.g. --linear-solver=ilu0">
       </label>
