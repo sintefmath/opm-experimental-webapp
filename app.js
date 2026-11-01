@@ -33,6 +33,16 @@ function setCase(name, files, deck) {
   previewGrid();
 }
 
+// The 3D view is an ES module (three.js); if it failed to load, say so instead of hiding it
+function call3d(fn, m) {
+  if (window.view3d) { window.view3d[fn](m); return; }
+  if (state.warned3d) return;
+  state.warned3d = true;
+  $('v3d-card').hidden = false;
+  $('v3d').textContent = '3D view could not be loaded: view3d.js, viewer.js or lib/three.module.min.js ' +
+    'is missing or blocked on this server (see the browser console).';
+}
+
 // Read the grid with a dry run (no time stepping) so it can be shown before simulating
 function previewGrid() {
   const deck = $('deck-select').value;
@@ -47,7 +57,7 @@ function previewGrid() {
   w.onmessage = (ev) => {
     const m = ev.data;
     if (m.type === 'grid') {
-      window.view3d?.setGrid(m);
+      call3d('setGrid', m);
       setStatus('Ready to run.');
     }
     else if (m.type === 'log' && m.err) appendLog(m.text);
@@ -211,16 +221,16 @@ function runSimulation() {
         renderPlots();
         break;
       case 'grid':
-        window.view3d?.setGrid(m);
+        call3d('setGrid', m);
         break;
       case 'restart':
-        window.view3d?.addLiveStep(m);
+        call3d('addLiveStep', m);
         break;
       case 'done':
         clearInterval(timerId);
         state.outputs = m.files.map((f) => ({ path: f.path, data: new Uint8Array(f.data) }));
         renderOutputs();
-        window.view3d?.setOutputs(state.outputs);
+        call3d('setOutputs', state.outputs);
         if (m.rc === 0) {
           setProgress(1, '100 %');
           setStatus(`Finished in ${m.seconds.toFixed(1)} s.`);

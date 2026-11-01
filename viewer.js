@@ -1,6 +1,6 @@
 // 3D viewer for corner-point grids with per-cell coloring, IJK clipping and thresholding.
 import * as THREE from 'three';
-import { OrbitControls } from './vendor/OrbitControls.js';
+import { OrbitControls } from './lib/OrbitControls.js';
 
 // Viridis-like colormap stops
 const CMAP = [
