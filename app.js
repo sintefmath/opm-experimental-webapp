@@ -172,14 +172,23 @@ $('upload-zip').addEventListener('change', async (e) => {
 });
 
 let examples = [];
-fetch('cases/manifest.json').then((r) => r.json()).then((list) => {
+fetch('cases/manifest.json').then((r) => r.json()).then(async (list) => {
   examples = list;
   for (const ex of list) $('example-select').add(new Option(ex.title, ex.id));
+  // start with SPE1 case 1 loaded (grid shown, not run) unless a case was chosen meanwhile
+  const first = list.find((x) => /^SPE1CASE1\.DATA$/i.test(x.deck));
+  await buildsReady;
+  if (!first || state.files.size || state.worker) return;
+  $('example-select').value = first.id;
+  loadExample(first);
 }).catch(() => { /* no bundled examples */ });
 
-$('load-example').addEventListener('click', async () => {
+$('load-example').addEventListener('click', () => {
   const ex = examples.find((x) => x.id === $('example-select').value);
-  if (!ex) return;
+  if (ex) loadExample(ex);
+});
+
+async function loadExample(ex) {
   setStatus(`Downloading ${ex.title}…`);
   const files = new Map();
   try {
@@ -194,7 +203,7 @@ $('load-example').addEventListener('click', async () => {
   }
   $('extra-args').value = ex.args || '';   // recommended options of this example (e.g. SPE11)
   setCase(ex.title, files, ex.deck);
-});
+}
 
 // ---------------------------------------------------------------- running
 
