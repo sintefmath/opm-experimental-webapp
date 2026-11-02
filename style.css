@@ -24,6 +24,7 @@
   }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }   /* also for elements styled with display: flex */
 body {
   margin: 0; background: var(--bg); color: var(--text);
   font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;

@@ -192,7 +192,7 @@ $('load-example').addEventListener('click', async () => {
     setStatus('Could not load example: ' + err.message);
     return;
   }
-  if (ex.args) $('extra-args').value = ex.args;
+  $('extra-args').value = ex.args || '';   // recommended options of this example (e.g. SPE11)
   setCase(ex.title, files, ex.deck);
 });
 
@@ -227,6 +227,14 @@ function splitArgs(s) {
 }
 
 let startTime = 0;
+
+// "day 750 of 3312", or hours for short (lab-scale) runs and years for long ones
+function simTime(day, total) {
+  if (total < 2) return `hour ${(day * 24).toFixed(1)} of ${(total * 24).toFixed(1)}`;
+  if (total < 20) return `day ${day.toFixed(2)} of ${total.toFixed(2)}`;
+  if (total > 365 * 50) return `year ${(day / 365.25).toFixed(1)} of ${(total / 365.25).toFixed(0)}`;
+  return `day ${day.toFixed(0)} of ${total.toFixed(0)}`;
+}
 let timerId = 0;
 
 function runSimulation() {
@@ -253,8 +261,8 @@ function runSimulation() {
   const elapsed = () => ((performance.now() - startTime) / 1000).toFixed(0) + ' s';
   timerId = setInterval(() => {
     if (lastProgress.totalDays) {
-      setStatus(`Report step ${lastProgress.step}/${lastProgress.steps} · day ` +
-                `${lastProgress.day.toFixed(0)} of ${lastProgress.totalDays.toFixed(0)} · ${elapsed()}`);
+      setStatus(`Report step ${lastProgress.step}/${lastProgress.steps} · ` +
+                `${simTime(lastProgress.day, lastProgress.totalDays)} · ${elapsed()}`);
     }
   }, 500);
 

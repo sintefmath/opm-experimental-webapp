@@ -99,6 +99,7 @@
           <label class="check"><input type="checkbox" id="v-edges" checked> Cell edges</label>
           <label class="check"><input type="checkbox" id="v-wells" checked> Wells</label>
           <label class="check"><input type="checkbox" id="v-wellnames" checked> Well names</label>
+          <label class="check" id="v-2d-row" hidden><input type="checkbox" id="v-2d"> 2D view (pan with the left button)</label>
           <button id="v-reset">Reset view</button>
         </div>
       </div>
@@ -141,7 +142,8 @@
 <footer class="muted small">
   Built from <a href="https://opm-project.org">OPM Flow</a>
   (<a href="LICENSE-OPM.txt">GPL-3.0</a>, source at <a href="https://github.com/OPM">github.com/OPM</a>).
-  Example decks from opm-data (<a href="cases/odbl-10.txt">ODbL</a>, <a href="cases/dbcl-10.txt">DbCL</a>).
+  Example decks from opm-data (<a href="cases/odbl-10.txt">ODbL</a>, <a href="cases/dbcl-10.txt">DbCL</a>);
+  SPE11 decks generated with <a href="https://github.com/OPM/pyopmspe11">pyopmspe11</a> (<a href="cases/LICENSE-pyopmspe11.txt">MIT</a>, <a href="cases/SPE11-README.md">details</a>).
 </footer>
 
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>

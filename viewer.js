@@ -17,6 +17,8 @@ export function colormap(t, out, o) {
   for (let c = 0; c < 3; c++) out[o + c] = CMAP[i][c] * (1 - f) + CMAP[i + 1][c] * f;
 }
 
+function srgbToLinear(c) { return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }
+
 export function colormapCss(t) {
   const c = [0, 0, 0];
   colormap(t, c, 0);
@@ -66,6 +68,7 @@ export class GridViewer {
     this.filter = null;
     this.zscale = 1;
     this.showEdges = true;
+    this.mode = '3d';     // '2d' looks along the thin axis of a grid with one cell in some direction
     this.wells = [];
     this.wellGroup = null;
     this.showWells = true;
@@ -201,7 +204,9 @@ export class GridViewer {
       zmin = Math.min(zmin, z); zmax = Math.max(zmax, z);
     }
     const horiz = Math.max(xmax - xmin, ymax - ymin), vert = Math.max(zmax - zmin, 1e-6);
-    this.grid = { nx, ny, nz, nact, ijk, g2a, corners: c32, nb, conform, horiz, vert, zmin };
+    // flat: the axis with a single cell (y for x-z sections like SPE11A/B, z for single-layer grids)
+    const flat = ny === 1 && nx > 1 ? 'y' : nx === 1 && ny > 1 ? 'x' : nz === 1 ? 'z' : null;
+    this.grid = { nx, ny, nz, nact, ijk, g2a, corners: c32, nb, conform, horiz, vert, zmin, flat };
     // North in grid coordinates: MAPAXES [x1, y1, x0, y0, x2, y2] maps grid x/y axes to map coordinates
     let nxg = 0, nyg = 1;
     const m = grid.mapaxes;
@@ -215,9 +220,32 @@ export class GridViewer {
     this.zscale = this.autoZScale;
     this.filter = null;
     this.values = null;
+    this.mode = flat ? '2d' : '3d';
+    this.applyMode();
     this.rebuild();
     this.buildWells();
     this.resetView();
+  }
+
+  // '2d' (only for grids with a flat axis): look along the flat axis, pan with the left button,
+  // no rotation; '3d': orbit
+  setMode(mode) {
+    this.mode = mode;
+    this.applyMode();
+    this.resetView();
+  }
+
+  is2D() { return this.mode === '2d' && !!(this.grid && this.grid.flat); }
+
+  applyMode() {
+    const flat2d = this.is2D();
+    this.controls.enableRotate = !flat2d;
+    this.controls.mouseButtons.LEFT = flat2d ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    this.controls.touches.ONE = flat2d ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+    // in a vertical section north points into the screen; only map views get the compass
+    this.compass.style.display = flat2d && this.grid.flat !== 'z' ? 'none' : '';
+    // in 2D the wells run inside the (thin) slab: draw them on top of the cells
+    for (const m of [this.wellMaterial, this.connMaterial]) { m.depthTest = !flat2d; m.needsUpdate = true; }
   }
 
   // log: color by log10 of the value (range given in raw values)
@@ -323,6 +351,7 @@ export class GridViewer {
     });
     this.wellGroup = new THREE.Group();
     this.wellGroup.visible = this.showWells;
+    this.wellGroup.renderOrder = 1;
     if (tubes.length) this.wellGroup.add(this.tubeMesh(tubes, radius));
     if (markers.length) {
       const m = new THREE.InstancedMesh(new THREE.SphereGeometry(radius * 1.7, 12, 8), this.connMaterial, markers.length);
@@ -331,6 +360,7 @@ export class GridViewer {
       this.wellGroup.add(m);
       this.wellMarkers = { mesh: m, markers };
     }
+    for (const c of this.wellGroup.children) c.renderOrder = 1;   // after the cells (on top in 2D)
     this.scene.add(this.wellGroup);
   }
 
@@ -424,6 +454,8 @@ export class GridViewer {
         if (Number.isFinite(v)) colormap(((log ? Math.log10(v) : v) - lo) * inv, rgb, 0);
         else { rgb[0] = rgb[1] = rgb[2] = 0.6; }
       } else { rgb[0] = 0.55; rgb[1] = 0.65; rgb[2] = 0.78; }
+      // the colormap is in sRGB (like the legend); three.js wants linear vertex colors
+      for (let c = 0; c < 3; c++) rgb[c] = srgbToLinear(rgb[c]);
       for (let f = 0; f < 6; f++) {
         const b = g.nb[6 * a + f];
         if (!(b < 0 || !vis[b] || !g.conform[6 * a + f])) continue;
@@ -460,18 +492,36 @@ export class GridViewer {
   resetView() {
     const g = this.grid;
     if (!g) return;
+    this.resize();   // the panel may just have been shown; fit to its current size
     const box = new THREE.Box3();
     const p = g.corners;
     for (let i = 0; i < p.length; i += 3) {
       box.expandByPoint(new THREE.Vector3(p[i], -p[i + 2] * this.zscale, -p[i + 1]));
     }
     const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3()).length();
+    const extent = box.getSize(new THREE.Vector3());
+    const size = extent.length();
     this.controls.target.copy(center);
-    // fit the bounding sphere for both the vertical and horizontal field of view
     const fov = THREE.MathUtils.degToRad(this.camera.fov);
-    const dist = 0.5 * size / Math.tan(fov / 2) * Math.max(1, 1 / this.camera.aspect);
-    this.camera.position.copy(center).add(new THREE.Vector3(0.6, 0.55, 0.9).normalize().multiplyScalar(dist));
+    const tan = Math.tan(fov / 2);
+    if (this.is2D()) {
+      // face-on: fit the section's width and height, looking along the flat axis
+      // (world X = east, Y = up, Z = -north)
+      const flat = this.grid.flat;
+      const w = flat === 'x' ? extent.z : extent.x;
+      const h = flat === 'z' ? extent.z : extent.y;
+      const depth = flat === 'x' ? extent.x : flat === 'y' ? extent.z : extent.y;
+      const dist = 1.08 * Math.max(0.5 * h / tan, 0.5 * w / (tan * this.camera.aspect)) + depth / 2;
+      // x-z section seen from the south (x to the right), y-z from the east (north to the right),
+      // map view from above with north up
+      const dir = flat === 'x' ? new THREE.Vector3(1, 0, 0) : flat === 'y' ? new THREE.Vector3(0, 0, 1)
+        : new THREE.Vector3(0, 1, 1e-4).normalize();
+      this.camera.position.copy(center).addScaledVector(dir, dist);
+    } else {
+      // fit the bounding sphere for both the vertical and horizontal field of view
+      const dist = 0.5 * size / tan * Math.max(1, 1 / this.camera.aspect);
+      this.camera.position.copy(center).add(new THREE.Vector3(0.6, 0.55, 0.9).normalize().multiplyScalar(dist));
+    }
     this.camera.near = size / 1000;
     this.camera.far = size * 20;
     this.camera.updateProjectionMatrix();

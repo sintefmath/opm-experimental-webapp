@@ -200,8 +200,12 @@ function readRestartStep(buf, step, nactive) {
   }
   if (!out.SOIL && (out.SWAT || out.SGAS)) {
     const s = new Float32Array(nactive);
-    for (let i = 0; i < nactive; i++) s[i] = 1 - (out.SWAT ? out.SWAT[i] : 0) - (out.SGAS ? out.SGAS[i] : 0);
-    out.SOIL = s;
+    let max = 0;
+    for (let i = 0; i < nactive; i++) {
+      s[i] = 1 - (out.SWAT ? out.SWAT[i] : 0) - (out.SGAS ? out.SGAS[i] : 0);
+      if (s[i] > max) max = s[i];
+    }
+    if (max > 1e-6) out.SOIL = s;   // not for two-phase gas-water cases (e.g. CO2STORE)
   }
   return out;
 }

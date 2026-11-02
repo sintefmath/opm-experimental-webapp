@@ -121,6 +121,7 @@ $('v-edges').addEventListener('change', () => viewer.setShowEdges($('v-edges').c
 $('v-wells').addEventListener('change', () => { viewer.setShowWells($('v-wells').checked); $('v-wellnames').disabled = !$('v-wells').checked; });
 $('v-wellnames').addEventListener('change', () => viewer.setShowWellNames($('v-wellnames').checked));
 $('v-reset').addEventListener('click', () => viewer.resetView());
+$('v-2d').addEventListener('change', () => viewer.setMode($('v-2d').checked ? '2d' : '3d'));
 $('v-zs').addEventListener('input', () => {
   $('v-zslab').textContent = `×${$('v-zs').value}`;
   viewer.setZScale(+$('v-zs').value);
@@ -284,6 +285,8 @@ window.view3d = {
       st.dims = [g.nx, g.ny, g.nz, m.nactive];
       st.userPicked = false;
       viewer.setGrid(g);
+      $('v-2d-row').hidden = !viewer.grid.flat;
+      $('v-2d').checked = viewer.is2D();
       setupAxis('i', g.nx); setupAxis('j', g.ny); setupAxis('k', g.nz);
       $('v-zs').value = viewer.zscale;
       $('v-zslab').textContent = `×${viewer.zscale}`;
