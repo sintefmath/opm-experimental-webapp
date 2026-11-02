@@ -76,7 +76,23 @@ summary { cursor: pointer; font-weight: 600; }
 .v3d-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 16px; }
 @media (max-width: 760px) { .v3d-layout { grid-template-columns: minmax(0, 1fr); } }
 .v3d-layout > * { min-width: 0; }
-#v3d { height: 480px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; touch-action: none; }
+#v3d { position: relative; height: 480px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; touch-action: none; }
+.v3d-labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.v3d-well-label {
+  position: absolute; left: 0; top: 0; padding: 1px 5px; border-radius: 4px; border-left: 3px solid;
+  background: color-mix(in srgb, var(--card) 85%, transparent); color: var(--text);
+  font-size: 11px; white-space: nowrap; margin-top: -4px;
+}
+.v3d-compass { position: absolute; top: 10px; right: 10px; width: 64px; height: 64px; pointer-events: none; }
+.v3d-compass svg { width: 100%; height: 100%; overflow: visible; }
+.v3d-compass .ring { fill: color-mix(in srgb, var(--card) 80%, transparent); stroke: var(--muted); stroke-width: 2; }
+.v3d-compass .north { fill: #dc2626; }
+.v3d-compass .south { fill: var(--muted); }
+.v3d-compass .lbl { font: 700 15px system-ui, sans-serif; fill: var(--text); text-anchor: middle;
+  stroke: var(--card); stroke-width: 3px; paint-order: stroke; }
+.well-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; margin-top: 6px; min-height: 18px; }
+.well-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.well-legend i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 #v3d canvas { display: block; width: 100%; height: 100%; }
 .v3d-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between;
   margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }

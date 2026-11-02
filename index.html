@@ -73,6 +73,7 @@
           </div>
           <span id="v-info" class="muted"></span>
         </div>
+        <div class="well-legend small" id="v-well-legend"></div>
       </div>
       <div class="v3d-controls">
         <label>Property <select id="v-prop"></select></label>
@@ -89,12 +90,15 @@
         </div>
         <div class="ctl-group">
           <label class="check"><input type="checkbox" id="v-thr"> Threshold: show values in</label>
+          <div class="axis"><input type="range" id="v-tlo" min="0" max="1000" value="0" aria-label="Threshold minimum"><input type="range" id="v-thi" min="0" max="1000" value="1000" aria-label="Threshold maximum"></div>
           <div class="thr"><input type="text" id="v-lo" inputmode="decimal"> – <input type="text" id="v-hi" inputmode="decimal"></div>
           <div class="muted small" id="v-count"></div>
         </div>
         <div class="ctl-group">
           <div class="axis"><span>Z scale <span id="v-zslab"></span></span><input type="range" id="v-zs" min="1" max="200" value="1"></div>
           <label class="check"><input type="checkbox" id="v-edges" checked> Cell edges</label>
+          <label class="check"><input type="checkbox" id="v-wells" checked> Wells</label>
+          <label class="check"><input type="checkbox" id="v-wellnames" checked> Well names</label>
           <button id="v-reset">Reset view</button>
         </div>
       </div>
@@ -143,6 +147,7 @@
 <script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
 <script src="lib/fflate.min.js"></script>
 <script src="smry.js"></script>
+<script src="deck.js"></script>
 <script type="module" src="view3d.js"></script>
 <script src="plot.js"></script>
 <script src="app.js"></script>

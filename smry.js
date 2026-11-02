@@ -2,7 +2,7 @@
 // OPM Flow: summary (.SMSPEC/.UNSMRY), grid (.EGRID), init (.INIT), restart (.UNRST).
 
 /* exported scanEclFile, readEclArray, readEclFile, readSummary, readGrid, readInit,
-            indexRestart, readRestartStep */
+            indexRestart, readRestartStep, readRestartWells */
 
 const ECL_TYPES = {
   INTE: [4, 1000], REAL: [4, 1000], LOGI: [4, 1000], DOUB: [8, 1000], CHAR: [8, 105], MESS: [0, 1],
@@ -123,12 +123,14 @@ function readSummary(smspecBuf, unsmryBuf) {
   return { time, vectors, units: unitMap };
 }
 
-// Main grid from an EGRID file: {nx, ny, nz, coord, zcorn, actnum}
+// Main grid from an EGRID file: {nx, ny, nz, coord, zcorn, actnum, mapaxes?}
 function readGrid(buf) {
   const grid = {};
   for (const e of scanEclFile(buf)) {
     if (e.name === 'ENDGRID') break;   // ignore LGRs
-    if (e.name === 'GRIDHEAD') {
+    if (e.name === 'MAPAXES') {
+      grid.mapaxes = Array.from(readEclArray(buf, e));
+    } else if (e.name === 'GRIDHEAD') {
       const h = readEclArray(buf, e);
       grid.nx = h[1]; grid.ny = h[2]; grid.nz = h[3];
     } else if (e.name === 'COORD' || e.name === 'ZCORN' || e.name === 'ACTNUM') {
@@ -159,20 +161,24 @@ function readInit(buf, nactive, actnum) {
   return props;
 }
 
-// Report steps in a UNRST file: [{seqnum, date: [d, m, y], arrays: [entry...]}]
+// Report steps in a UNRST file: [{seqnum, date: [d, m, y], arrays: [entry...], wellArrays: {NAME: entry}}]
 function indexRestart(buf, start = 0) {
   const steps = [];
   let cur = null;
   let inSol = false;
   for (const e of scanEclFile(buf, start)) {
     if (e.name === 'SEQNUM') {
-      cur = { seqnum: readEclArray(buf, e)[0], start: e.offset - 24, date: null, arrays: [], complete: false };
+      cur = { seqnum: readEclArray(buf, e)[0], start: e.offset - 24, date: null, arrays: [], wellArrays: {},
+              complete: false };
       steps.push(cur);
     } else if (!cur) {
       continue;
     } else if (e.name === 'INTEHEAD') {
       const h = readEclArray(buf, e);
       cur.date = [h[64], h[65], h[66]];
+      cur.wellArrays.INTEHEAD = e;
+    } else if (!inSol && (e.name === 'IWEL' || e.name === 'ZWEL' || e.name === 'ICON')) {
+      cur.wellArrays[e.name] = e;
     } else if (e.name === 'STARTSOL') {
       inSol = true;
     } else if (e.name === 'ENDSOL') {
@@ -200,7 +206,32 @@ function readRestartStep(buf, step, nactive) {
   return out;
 }
 
+// Wells of one indexed step: [{name, type, open, head: [i, j], conns: [[i, j, k, open], ...]}],
+// 1-based indices; type 1 = producer, 2 = oil, 3 = water, 4 = gas injector (OPM's IWEL codes)
+function readRestartWells(buf, step) {
+  const w = step.wellArrays || {};
+  if (!w.INTEHEAD || !w.IWEL || !w.ZWEL || !w.ICON) return [];
+  const h = readEclArray(buf, w.INTEHEAD);
+  const nwells = h[16], ncwmax = h[17], niwelz = h[24], nzwelz = h[27], niconz = h[32];
+  const iwel = readEclArray(buf, w.IWEL), zwel = readEclArray(buf, w.ZWEL), icon = readEclArray(buf, w.ICON);
+  const wells = [];
+  for (let n = 0; n < nwells; n++) {
+    const o = n * niwelz;
+    const conns = [];
+    for (let c = 0; c < Math.min(iwel[o + 4], ncwmax); c++) {
+      const q = (n * ncwmax + c) * niconz;
+      if (icon[q + 1] > 0 && icon[q + 2] > 0 && icon[q + 3] > 0) {
+        conns.push([icon[q + 1], icon[q + 2], icon[q + 3], icon[q + 5] > 0]);
+      }
+    }
+    // status: 1 open, 3 auto, 0 stop, -1000 shut
+    wells.push({ name: zwel[n * nzwelz], type: iwel[o + 6], open: iwel[o + 10] > 0,
+                 head: [iwel[o], iwel[o + 1]], conns });
+  }
+  return wells;
+}
+
 if (typeof self !== 'undefined') {
   Object.assign(self, { scanEclFile, readEclArray, readEclFile, readSummary, readGrid, readInit,
-                        indexRestart, readRestartStep });
+                        indexRestart, readRestartStep, readRestartWells });
 }

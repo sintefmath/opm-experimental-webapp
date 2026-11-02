@@ -1,5 +1,5 @@
 // Web Worker running OPM Flow (WebAssembly) so that the UI stays responsive.
-/* global createFlow, readSummary, readGrid, readInit, indexRestart, readRestartStep */
+/* global createFlow, readSummary, readGrid, readInit, indexRestart, readRestartStep, readRestartWells */
 // worker.js?dir=mt64/&threads=4 loads the simulator build in that directory (see BUILDS in app.js)
 const params = new URL(self.location.href).searchParams;
 const BUILD_DIR = (params.get('dir') || '').replace(/[^\w/]/g, '');
@@ -100,7 +100,8 @@ function postRestart() {
     const last = steps[steps.length - 1];
     rstPos = last.end;
     const data = readRestartStep(bytes, last, gridInfo.nactive);
-    post({ type: 'restart', seqnum: last.seqnum, date: last.date, data },
+    const wells = readRestartWells(bytes, last);
+    post({ type: 'restart', seqnum: last.seqnum, date: last.date, data, wells },
          Object.values(data).map((v) => v.buffer));
   } catch (e) {
     // partially written; retry later

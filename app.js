@@ -1,4 +1,4 @@
-/* global fflate, plotLines */
+/* global fflate, plotLines, parseDeckWells */
 'use strict';
 
 const $ = (id) => document.getElementById(id);
@@ -96,6 +96,12 @@ function previewGrid() {
   if (state.previewWorker) state.previewWorker.terminate();
   state.previewWorker = null;
   if (!deck || state.worker) return;
+  // wells from the deck's schedule, shown with the grid until a run reports them per step
+  try {
+    call3d('setDeckWells', parseDeckWells(state.files, deck));
+  } catch (e) {
+    appendLog('Could not read wells from the deck: ' + e);
+  }
   const files = [...state.files].map(([path, data]) => ({ path, data: data.slice().buffer }));
   const w = newWorker(1).worker;
   state.previewWorker = w;
