@@ -10,6 +10,7 @@
   --log-bg: #0f1419;
   --log-text: #c9d1d9;
   --plot-bg: #ffffff;
+  --sintef: #003c65;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -21,6 +22,7 @@
     --accent: #4c8dff;
     --grid: #262c37;
     --plot-bg: #12161d;
+    --sintef: #e8eef4;
   }
 }
 * { box-sizing: border-box; }
@@ -32,6 +34,16 @@ body {
 header, main { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
 header { padding-top: 24px; }
 h1 { margin: 0 0 4px; font-size: 26px; }
+.brand { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 28px;
+  padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.brand a { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; }
+.brand-opm img { display: block; border-radius: 6px; }
+.brand-opm span { font-weight: 600; font-size: 15px; }
+.brand-sintef { color: var(--sintef) !important; }
+.logo-sintef { display: block; width: 126px; height: 26px; }
+.intro { max-width: 75ch; margin: 6px 0 6px; }
+.credit { margin: 0; }
+header a { color: var(--accent); }
 h1 .sub { font-weight: 400; color: var(--muted); font-size: 18px; }
 h2 { margin: 0 0 12px; font-size: 17px; }
 .muted { color: var(--muted); }
@@ -40,7 +52,8 @@ h2 { margin: 0 0 12px; font-size: 17px; }
   padding: 16px; margin: 16px 0;
 }
 .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; }
-.row label { display: flex; gap: 8px; align-items: center; }
+.row label { display: flex; gap: 8px; align-items: center; max-width: 100%; }
+.row label select { min-width: 0; max-width: 100%; }
 .row label.grow { flex: 1; }
 .row label.grow input { flex: 1; min-width: 0; }
 button, .file-btn, select, input[type=text] {
